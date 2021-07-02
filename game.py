@@ -48,27 +48,32 @@ noble_images = {1: pygame.image.load(util.resource_path('nobles.jpg')).subsurfac
                 9: pygame.image.load(util.resource_path('nobles.jpg')).subsurface((1440, 0, 180, 180)).convert(),
                 10: pygame.image.load(util.resource_path('nobles.jpg')).subsurface((1620, 0, 180, 180)).convert(),
                 }
-card_backs = {'white': [[pygame.image.load(util.resource_path('blue_back1.jpg')).convert()],
-                        [pygame.image.load(util.resource_path('blue_back1.jpg')).convert()],
-                        [pygame.image.load(util.resource_path('blue_back1.jpg')).convert()]],
-              'blue': [[pygame.image.load(util.resource_path('blue_back1.jpg')).convert()],
-                       [pygame.image.load(util.resource_path('blue_back1.jpg')).convert()],
-                       [pygame.image.load(util.resource_path('blue_back3.jpg')).convert()]],
-              'green': [[pygame.image.load(util.resource_path('blue_back1.jpg')).convert()],
-                        [pygame.image.load(util.resource_path('green_back2.jpg')).convert()],
-                        [pygame.image.load(util.resource_path('blue_back1.jpg')).convert()]],
-              'red': [[pygame.image.load(util.resource_path('blue_back1.jpg')).convert()],
-                      [pygame.image.load(util.resource_path('blue_back1.jpg')).convert()],
-                      [pygame.image.load(util.resource_path('red_back3.jpg')).convert()]],
-              'black': [[pygame.image.load(util.resource_path('black_back1.jpg')).convert()],
-                        [pygame.image.load(util.resource_path('blue_back1.jpg')).convert()],
-                        [pygame.image.load(util.resource_path('blue_back1.jpg')).convert()]]}
+card_backs = {'white': [[pygame.image.load(util.resource_path('cards.jpg')).subsurface((1380, 0, 230, 320)).convert()],
+                        [pygame.image.load(util.resource_path('cards.jpg')).subsurface((1610, 0, 230, 320)).convert()],
+                        [pygame.image.load(util.resource_path('cards.jpg')).subsurface((1840, 0, 230, 320)).convert()]],
+              'blue': [[pygame.image.load(util.resource_path('blue_back1.jpg')).convert(),
+                        pygame.image.load(util.resource_path('cards.jpg')).subsurface((690, 0, 230, 320)).convert()],
+                       [pygame.image.load(util.resource_path('cards.jpg')).subsurface((920, 0, 230, 320)).convert()],
+                       [pygame.image.load(util.resource_path('blue_back3.jpg')).convert(),
+                        pygame.image.load(util.resource_path('cards.jpg')).subsurface((1150, 0, 230, 320)).convert()]],
+              'green': [[pygame.image.load(util.resource_path('cards.jpg')).subsurface((2070, 0, 230, 320)).convert()],
+                        [pygame.image.load(util.resource_path('green_back2.jpg')).convert(),
+                         pygame.image.load(util.resource_path('cards.jpg')).subsurface((2300, 0, 230, 320)).convert()],
+                        [pygame.image.load(util.resource_path('cards.jpg')).subsurface((2530, 0, 230, 320)).convert()]],
+              'red': [[pygame.image.load(util.resource_path('cards.jpg')).subsurface((2760, 0, 230, 320)).convert()],
+                      [pygame.image.load(util.resource_path('cards.jpg')).subsurface((2990, 0, 230, 320)).convert()],
+                      [pygame.image.load(util.resource_path('red_back3.jpg')).convert(),
+                       pygame.image.load(util.resource_path('cards.jpg')).subsurface((3220, 0, 230, 320)).convert()]],
+              'black': [[pygame.image.load(util.resource_path('black_back1.jpg')).convert(),
+                         pygame.image.load(util.resource_path('cards.jpg')).subsurface((0, 0, 230, 320)).convert()],
+                        [pygame.image.load(util.resource_path('cards.jpg')).subsurface((230, 0, 230, 320)).convert()],
+                        [pygame.image.load(util.resource_path('cards.jpg')).subsurface((460, 0, 230, 320)).convert()]]}
 
 
 class Game:
-    def __init__(self):
-        self.player = Player(self)
-        self.opponent = Opponent(self)
+    def __init__(self, genomes):
+        self.player = Player(self, genomes[0])
+        self.opponent = Opponent(self, genomes[1])
         self.board = [[0, 0, 0, 0],
                       [0, 0, 0, 0],
                       [0, 0, 0, 0]]
@@ -179,6 +184,8 @@ class Game:
         pos = pygame.mouse.get_pos()
         if clock.get_fps() > 0:
             self.timer += 1 / clock.get_fps()
+        if self.turn == self.opponent:
+            self.opponent.do_action()
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN and not clicked and self.turn == self.player:
                 if event.button == 1:
@@ -299,6 +306,7 @@ class Player:
         self.game.tokens.remove(token)
         self.tokens.append(token)
         self.taken.append(token)
+        return True
 
     def buy(self, card):
         for x in range(0, 5):
@@ -341,7 +349,23 @@ class Player:
 
 
 class Opponent(Player):
-    pass
+    def do_action(self):
+        for row in self.game.board:
+            for card in row:
+                if card != 0 and self.can_buy(card):
+                    # pygame.time.wait(1000)
+                    self.buy(card)
+                    self.game.end_turn()
+                    return True
+        count = 0
+        while count < 3:
+            color = util.index_to_color(random.randrange(0, 5))
+            if not self.taken.__contains__(Token(color)):
+                # pygame.time.wait(500)
+                self.take_token(color=color)
+                count += 1
+        self.game.end_turn()
+        return True
 
 
 class Card:
@@ -461,7 +485,7 @@ def draw_reserved(reserved):
 def draw_tokens(tokens, opponent=False):
     x_offset = 0
     y_offset = 5
-    x_initial = token_box_rect.x + 340
+    x_initial = token_box_rect.x + token_box_rect.width - 295
     y_initial = 1295
     x_spacing = green_token.get_width() + 17
     x = x_initial
@@ -469,56 +493,17 @@ def draw_tokens(tokens, opponent=False):
     if opponent:
         x_offset = 6
         y_offset = 10
-        y_initial = 100
+        y_initial = 70
     for i in range(0, 6):
-        x = x_initial + x_spacing * i
-        if i == 0:
-            for gem in [gem for gem in tokens if gem.color == 'white']:
-                gem.sprite = screen.blit(
-                    pygame.transform.scale(gem.img, (int(gem.img.get_width() / 2), int(gem.img.get_height() / 2))),
-                    (x, y))
-                x += x_offset
-                y -= y_offset
-            y = y_initial
-        elif i == 1:
-            for gem in [gem for gem in tokens if gem.color == 'blue']:
-                gem.sprite = screen.blit(
-                    pygame.transform.scale(gem.img, (int(gem.img.get_width() / 2), int(gem.img.get_height() / 2))),
-                    (x, y))
-                x += x_offset
-                y -= y_offset
-            y = y_initial
-        elif i == 2:
-            for gem in [gem for gem in tokens if gem.color == 'green']:
-                gem.sprite = screen.blit(
-                    pygame.transform.scale(gem.img, (int(gem.img.get_width() / 2), int(gem.img.get_height() / 2))),
-                    (x, y))
-                x += x_offset
-                y -= y_offset
-            y = y_initial
-        elif i == 3:
-            for gem in [gem for gem in tokens if gem.color == 'red']:
-                gem.sprite = screen.blit(
-                    pygame.transform.scale(gem.img, (int(gem.img.get_width() / 2), int(gem.img.get_height() / 2))),
-                    (x, y))
-                x += x_offset
-                y -= y_offset
-            y = y_initial
-        elif i == 4:
-            for gem in [gem for gem in tokens if gem.color == 'black']:
-                gem.sprite = screen.blit(
-                    pygame.transform.scale(gem.img, (int(gem.img.get_width() / 2), int(gem.img.get_height() / 2))),
-                    (x, y))
-                x += x_offset
-                y -= y_offset
-            y = y_initial
-        elif i == 5:
-            for gem in [gem for gem in tokens if gem.color == 'yellow']:
-                gem.sprite = screen.blit(
-                    pygame.transform.scale(gem.img, (int(gem.img.get_width() / 2), int(gem.img.get_height() / 2))),
-                    (x, y))
-                x += x_offset
-                y -= y_offset
+        x = x_initial - x_spacing * i
+        color = util.index_to_color(i)
+        for gem in [gem for gem in tokens if gem.color == color]:
+            gem.sprite = screen.blit(
+                pygame.transform.scale(gem.img, (int(gem.img.get_width() / 2), int(gem.img.get_height() / 2))),
+                (x, y))
+            x += x_offset
+            y -= y_offset
+        y = y_initial
 
 
 def draw_board(game):
@@ -589,80 +574,29 @@ def draw_token_numbers(tokens, bank):
     label = myfont.render(f'{len(tokens)} / 10', True, (255, 255, 255))
     screen.blit(label, (token_box_rect.x - 40, token_box_rect.y + 30))
 
-    x_initial = token_box_rect.x + 360
+    x_initial = token_box_rect.x + token_box_rect.width - 275
     y_offset = 57
     x_spacing = green_token.get_width() + 17
-    y_bank = 280
+    y_bank = 150
     y_bank_offset = green_token.get_height() + 50
-    x_bank = 1970
+    x_bank = 1950
     for i in range(0, 5):
-        x = x_initial + x_spacing * i
-        if i == 0:
-            y = get_top(tokens, 'green')
-            if y:
-                y = y.sprite.y - y_offset
-                label = myfont.render(str(len([token for token in tokens if token.color == 'green'])), True,
-                                      (255, 255, 255))
-                screen.blit(label, (x, y))
-            # Print bank numbers
-            y = y_bank
-            amount = len([token for token in bank if token.color == 'green'])
-            if amount > 0:
-                label = myfont.render(str(amount), True,
-                                      (255, 255, 255))
-                screen.blit(label, (x_bank, y))
-        elif i == 1:
-            y = get_top(tokens, 'white')
-            if y:
-                y = y.sprite.y - y_offset
-                label = myfont.render(str(len([token for token in tokens if token.color == 'white'])), True,
-                                      (255, 255, 255))
-                screen.blit(label, (x, y))
-            y = y_bank + y_bank_offset * i
-            amount = len([token for token in bank if token.color == 'white'])
-            if amount > 0:
-                label = myfont.render(str(amount), True,
-                                      (255, 255, 255))
-                screen.blit(label, (x_bank, y))
-        elif i == 2:
-            y = get_top(tokens, 'blue')
-            if y:
-                y = y.sprite.y - y_offset
-                label = myfont.render(str(len([token for token in tokens if token.color == 'blue'])), True,
-                                      (255, 255, 255))
-                screen.blit(label, (x, y))
-            y = y_bank + y_bank_offset * i
-            amount = len([token for token in bank if token.color == 'blue'])
-            if amount > 0:
-                label = myfont.render(str(amount), True,
-                                      (255, 255, 255))
-                screen.blit(label, (x_bank, y))
-        elif i == 3:
-            y = get_top(tokens, 'black')
-            if y:
-                y = y.sprite.y - y_offset
-                label = myfont.render(str(len([token for token in tokens if token.color == 'black'])), True,
-                                      (255, 255, 255))
-                screen.blit(label, (x, y))
-            y = y_bank + y_bank_offset * i
-            amount = len([token for token in bank if token.color == 'black'])
-            if amount > 0:
-                label = myfont.render(str(amount), True,
-                                      (255, 255, 255))
-                screen.blit(label, (x_bank, y))
-        elif i == 4:
-            y = get_top(tokens, 'red')
-            if y:
-                y = y.sprite.y - y_offset
-                label = myfont.render(str(len([token for token in tokens if token.color == 'red'])), True,
-                                      (255, 255, 255))
-                screen.blit(label, (x, y))
-            y = y_bank + y_bank_offset * i
-            amount = len([token for token in bank if token.color == 'red'])
-            if amount > 0:
-                label = myfont.render(str(amount), True,
-                                      (255, 255, 255))
-                screen.blit(label, (x_bank, y))
+        x = x_initial - x_spacing * i
+        color = util.index_to_color(i)
+        y = get_top(tokens, color)
+        if y:
+            y = y.sprite.y - y_offset
+            label = myfont.render(str(len([token for token in tokens if token.color == color])), True,
+                                  (255, 255, 255))
+            screen.blit(label, (x, y))
+        # Print bank numbers
+        y = y_bank
+        amount = len([token for token in bank if token.color == color])
+        if amount > 0:
+            label = myfont.render(str(amount), True,
+                                  (255, 255, 255))
+            screen.blit(label, (x_bank, y))
+            y_bank += y_bank_offset
 
 
 def draw_text(game):
@@ -733,15 +667,44 @@ def update_screen():
     pygame.display.flip()
 
 
-def main(config=None, genome=None):
-    games = [Game()]
-    pygame.display.update()
+def show_welcome():
+    load = False
+    while not load:
+        events = pygame.event.get()
+        # pygame.display.update()
+        for e in events:
+            if e.type == pygame.KEYDOWN and e.key == pygame.K_SPACE:
+                load = True
+                break
+            elif e.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+                break
+        clock.tick(FPS)
+        screen.blit(bg, (0, 0))
+        # label = myfont.render('Welcome to Splendor!', True, (255, 255, 255))
+        # screen.blit(label, ((screen.get_width() - label.get_width()) // 2, screen.get_height() // 3))\\
+        # resized_logo = pygame.transform.scale(logo, (logo.get_width() * 2, logo.get_height() * 2))
+        resized_logo = pygame.transform.scale2x(logo)
+        screen.blit(resized_logo, ((screen.get_width() - resized_logo.get_width()) // 2, screen.get_height() // 3))
+        # label = smallerfont.render('Press space to continue', True, (255, 191, 0))
+        label = util.with_outline('Press space to continue', smallerfont, (255, 191, 0))
+        screen.blit(label, ((screen.get_width() - label.get_width()) // 2, screen.get_height() // 3 + 200))
+        update_screen()
+
+
+def main(games):
+    show_welcome()
+    if len(games) == 0:
+        games = [Game([0, 0])]
+
     while len(games) > 0:
         events = pygame.event.get()
         # pygame.display.update()
         clock.tick(FPS)
         screen.blit(bg, (0, 0))
-        games[0].run(events)
+        for game in games:
+            game.run(events)
         draw_game(games[0])
         update_screen()
         # pygame.display.flip()
