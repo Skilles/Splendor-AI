@@ -2,6 +2,22 @@ import pygame
 
 import game
 
+import os
+
+red = (232, 56, 47)
+blue = (57, 181, 246)
+green = (49, 170, 78)
+black = (74, 70, 70)
+
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS  # pylint: disable=no-member
+    except Exception:
+        base_path = os.path.abspath("textures")
+
+    return os.path.join(base_path, relative_path)
+
 
 def get_color(tokens, color):
     for token in tokens:
@@ -20,6 +36,21 @@ def index_to_color(index):  # white=0, blue=0, green=0, red=0, black=0
         return 'blue'
     elif index == 4:
         return 'white'
+    elif index == 5:
+        return 'yellow'
+
+
+def index_to_rgb(index):  # white=0, blue=0, green=0, red=0, black=0
+    if index == 0:
+        return black
+    elif index == 1:
+        return red
+    elif index == 2:
+        return green
+    elif index == 3:
+        return blue
+    elif index == 4:
+        return 255, 255, 255
 
 
 # For cards/tokens
@@ -78,7 +109,50 @@ def with_outline(text, font, gfcolor=pygame.Color('white'), ocolor=(0, 0, 0), op
     return surf
 
 
-def overlay_elements(card):
+def stamp_noble(noble):
+    initial_y = noble.img.get_height() - 40
+
+    y_offset = 58
+    radius = 20
+    initial_x = 25
+    # Searches through prices, finds non-zero ones, and stacks them on top of each other
+    overlay = pygame.Surface((noble.img.get_width() // 3.5, noble.img.get_height()))
+    overlay.set_alpha(100)
+    overlay.fill((255, 255, 255))
+    noble.img.blit(overlay, (0, 0))
+    count = 0
+    for i, price in enumerate(noble.price):
+        if price != 0:
+            y = initial_y - y_offset * count
+            count += 1
+            color = index_to_rgb(i)
+            pygame.draw.rect(noble.img, color,
+                             (initial_x - 20, y - 20, noble.img.get_width() // 5, noble.img.get_height() // 5 + 18),
+                             border_radius=4)
+            if i == 4:
+                pygame.draw.rect(noble.img, black,
+                                 (initial_x - 20, y - 20, noble.img.get_width() // 5, noble.img.get_height() // 5 + 18),
+                                 1, border_radius=4)
+                label = game.smallerfont.render(str(price), True, (255, 255, 255))
+            else:  # black
+                pygame.draw.rect(noble.img, (255, 255, 255),
+                                 (initial_x - 20, y - 20, noble.img.get_width() // 5, noble.img.get_height() // 5 + 18),
+                                 1, border_radius=4)
+                label = game.smallerfont.render(str(price), True, (0, 0, 0))
+
+            # text
+            noble.img.blit(with_outline(str(price), game.smallerfont),
+                           (initial_x - label.get_width() // 2 - 1, y - label.get_height() // 2 + 8))
+            y -= y_offset
+
+    # label = pointfont.render(str(card.points), True, (255, 255, 230))
+    noble.img.blit(with_outline(str(noble.points), game.pointfont),
+                   (noble.img.get_width() - label.get_width() - 15, noble.img.get_height() - label.get_height() - 30))
+    # card.img.blit(label, (initial_x - label.get_width() // 2, y - radius // 2 - 4))
+    set_rounded(noble)
+
+
+def stamp_card(card):
     # img = card.img.copy()
     y = card.img.get_height() - 25
     y_offset = 45
@@ -87,24 +161,16 @@ def overlay_elements(card):
     # Searches through prices, finds non-zero ones, and stacks them on top of each other
     for i, price in enumerate(card.price):
         # y = initial_y + y_offset * (len([price for price in tmp_price if price != 0]) - i)
+        color = index_to_rgb(i)
         if price != 0:
-            if i == 0:  # black
-                pygame.draw.circle(card.img, (0, 0, 0), (initial_x, y), radius)
-            elif i == 1:  # red
-                pygame.draw.circle(card.img, (255, 0, 0), (initial_x, y), radius)
-            elif i == 2:  # green
-                pygame.draw.circle(card.img, (0, 255, 0), (initial_x, y), radius)
-            elif i == 3:  # blue
-                pygame.draw.circle(card.img, (0, 0, 255), (initial_x, y), radius)
-            elif i == 4:  # white
-                pygame.draw.circle(card.img, (255, 255, 255), (initial_x, y), radius)
+            pygame.draw.circle(card.img, color, (initial_x, y), radius)
             # border
             pygame.draw.circle(card.img, (255, 255, 255), (initial_x, y), radius, 1)
             # pygame.draw.rect(card.img, (255, 255, 255, 50),
             #                  (0, 0, card.img.get_width(), card.img.get_height() // 4.5))
             # text
-            label = smallerfont.render(str(price), True, (255, 255, 255))
-            card.img.blit(with_outline(str(price), smallerfont),
+            label = game.smallerfont.render(str(price), True, (255, 255, 255))
+            card.img.blit(with_outline(str(price), game.smallerfont),
                           (initial_x - label.get_width() // 2 + 1, y - label.get_height() // 2 + 1))
             y -= y_offset
     overlay = pygame.Surface((card.img.get_width(), card.img.get_height() // 4.5))
@@ -116,11 +182,6 @@ def overlay_elements(card):
     card.img.blit(gem_img, (card.img.get_width() - gem_img.get_width() - 7, 5))
     if card.points != 0:
         # label = pointfont.render(str(card.points), True, (255, 255, 230))
-        card.img.blit(with_outline(str(card.points), pointfont), (10, 0))
+        card.img.blit(with_outline(str(card.points), game.pointfont), (10, 0))
         # card.img.blit(label, (initial_x - label.get_width() // 2, y - radius // 2 - 4))
     set_rounded(card)
-
-
-smallerfont = pygame.font.Font(None, 56)
-pointfont = pygame.font.Font(None, 110)
-smallerfont.set_italic(True)
