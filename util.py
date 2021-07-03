@@ -23,6 +23,7 @@ def get_color(tokens, color):
     for token in tokens:
         if token.color == color:
             return token
+    raise Exception("No tokens")
 
 
 def index_to_color(index):  # white=0, blue=0, green=0, red=0, black=0
@@ -56,6 +57,21 @@ def index_to_rgb(index):  # white=0, blue=0, green=0, red=0, black=0
 # For cards/tokens
 def get_colors(list, color):
     return [element for element in list if element.color == color]
+
+
+def highlight_cards(board, player):
+    if not isinstance(player, game.Opponent):
+        for row in board:
+            for card in row:
+                if player.can_buy(card):
+                    card.highlight = True
+                else:
+                    card.highlight = False
+        for card in player.reserved:
+            if player.can_buy(card):
+                card.highlight = True
+            else:
+                card.highlight = False
 
 
 def set_rounded(card):
@@ -113,7 +129,6 @@ def stamp_noble(noble):
     initial_y = noble.img.get_height() - 40
 
     y_offset = 58
-    radius = 20
     initial_x = 25
     # Searches through prices, finds non-zero ones, and stacks them on top of each other
     overlay = pygame.Surface((noble.img.get_width() // 3.5, noble.img.get_height()))
