@@ -4,6 +4,7 @@ from operator import attrgetter
 
 import pygame
 
+import algoai
 pygame.init()
 
 import util
@@ -73,7 +74,7 @@ card_backs = {'white': [[pygame.image.load(util.resource_path('cards.jpg')).subs
 
 
 class Game:
-    def __init__(self, genome=None, genomes=None, network=None):
+    def __init__(self, genome=None, network=None, genomes=None):
         if genomes is None:
             genomes = [genome, 0]
         self.genomes = genomes
@@ -225,14 +226,14 @@ class Game:
         return True
 
     def setup_board(self):
-        global noble_pool
+        pool = noble_pool.copy()
         self.init_cards()
         for row in range(0, 3):
             for _ in range(0, 4):
                 self.draw_card(row)
         for _ in range(0, 3):
-            noble = random.choice(noble_pool)
-            noble_pool.remove(noble)
+            noble = random.choice(pool)
+            pool.remove(noble)
             self.nobles.append(noble)
         for noble in self.nobles:
             util.stamp_noble(noble)
@@ -387,7 +388,9 @@ class Player:
         if token:
             return self.taken.__contains__(token)
         return len(self.taken) != 0
-
+    # TODO: for algoai
+    def can_take(self, token):
+        pass
     def __repr__(self):
         return 'Player'
 
@@ -753,13 +756,16 @@ def show_welcome():
         update_screen()
 
 
-def main(genome=None, network=None):
+def main(ai, genome=None, network=None):
     if SHOW_WELCOME:
         show_welcome()
     run = True
-    game = Game(genome)
+    game = Game(genome, network)
     while run:
         events = pygame.event.get()
+        if ai:
+            if algoai.do_action(game) == 'none' or game.timer > 5:
+                return game
         # pygame.display.update()
         clock.tick(FPS)
         screen.blit(bg, (0, 0))
